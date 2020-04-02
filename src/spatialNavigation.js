@@ -46,7 +46,10 @@ const THROTTLE_OPTIONS = {
 };
 
 export const getChildClosestToOrigin = (children) => {
-  const childrenClosestToOrigin = sortBy(children, ({layout}) => Math.abs(layout.left) + Math.abs(layout.top));
+  const childrenClosestToOrigin = sortBy(
+    children,
+    ({ layout }) => Math.abs(layout.left) + Math.abs(layout.top)
+  );
 
   return first(childrenClosestToOrigin);
 };
@@ -65,9 +68,13 @@ class SpatialNavigation {
     const coordinate = isVertical ? itemY : itemX;
     const itemSize = isVertical ? itemHeight : itemWidth;
 
-    return isIncremental ?
-      (isSibling ? coordinate : coordinate + itemSize) :
-      (isSibling ? coordinate + itemSize : coordinate);
+    return isIncremental
+      ? isSibling
+        ? coordinate
+        : coordinate + itemSize
+      : isSibling
+      ? coordinate + itemSize
+      : coordinate;
   }
 
   /**
@@ -167,8 +174,8 @@ class SpatialNavigation {
    * Calculates if the sibling node is intersecting enough with the ref node by the secondary coordinate
    */
   static isAdjacentSlice(refCorners, siblingCorners, isVerticalDirection) {
-    const {a: refA, b: refB} = refCorners;
-    const {a: siblingA, b: siblingB} = siblingCorners;
+    const { a: refA, b: refB } = refCorners;
+    const { a: siblingA, b: siblingB } = siblingCorners;
     const coordinate = isVerticalDirection ? 'x' : 'y';
 
     const refCoordinateA = refA[coordinate];
@@ -176,25 +183,37 @@ class SpatialNavigation {
     const siblingCoordinateA = siblingA[coordinate];
     const siblingCoordinateB = siblingB[coordinate];
 
-    const thresholdDistance = (refCoordinateB - refCoordinateA) * ADJACENT_SLICE_THRESHOLD;
+    const thresholdDistance =
+      (refCoordinateB - refCoordinateA) * ADJACENT_SLICE_THRESHOLD;
 
-    const intersectionLength = Math.max(0, Math.min(refCoordinateB, siblingCoordinateB) -
-      Math.max(refCoordinateA, siblingCoordinateA));
+    const intersectionLength = Math.max(
+      0,
+      Math.min(refCoordinateB, siblingCoordinateB) -
+        Math.max(refCoordinateA, siblingCoordinateA)
+    );
 
     return intersectionLength >= thresholdDistance;
   }
 
-  static getPrimaryAxisDistance(refCorners, siblingCorners, isVerticalDirection) {
-    const {a: refA} = refCorners;
-    const {a: siblingA} = siblingCorners;
+  static getPrimaryAxisDistance(
+    refCorners,
+    siblingCorners,
+    isVerticalDirection
+  ) {
+    const { a: refA } = refCorners;
+    const { a: siblingA } = siblingCorners;
     const coordinate = isVerticalDirection ? 'y' : 'x';
 
     return Math.abs(siblingA[coordinate] - refA[coordinate]);
   }
 
-  static getSecondaryAxisDistance(refCorners, siblingCorners, isVerticalDirection) {
-    const {a: refA, b: refB} = refCorners;
-    const {a: siblingA, b: siblingB} = siblingCorners;
+  static getSecondaryAxisDistance(
+    refCorners,
+    siblingCorners,
+    isVerticalDirection
+  ) {
+    const { a: refA, b: refB } = refCorners;
+    const { a: siblingA, b: siblingB } = siblingCorners;
     const coordinate = isVerticalDirection ? 'x' : 'y';
 
     const refCoordinateA = refA[coordinate];
@@ -218,35 +237,59 @@ class SpatialNavigation {
    * They used as a base to measure adjacent slices
    */
   sortSiblingsByPriority(siblings, currentLayout, direction, focusKey) {
-    const isVerticalDirection = direction === DIRECTION_DOWN || direction === DIRECTION_UP;
+    const isVerticalDirection =
+      direction === DIRECTION_DOWN || direction === DIRECTION_UP;
 
-    const refCorners = SpatialNavigation.getRefCorners(direction, false, currentLayout);
+    const refCorners = SpatialNavigation.getRefCorners(
+      direction,
+      false,
+      currentLayout
+    );
 
     return sortBy(siblings, (sibling) => {
-      const siblingCorners = SpatialNavigation.getRefCorners(direction, true, sibling.layout);
+      const siblingCorners = SpatialNavigation.getRefCorners(
+        direction,
+        true,
+        sibling.layout
+      );
 
-      const isAdjacentSlice = SpatialNavigation.isAdjacentSlice(refCorners, siblingCorners, isVerticalDirection);
+      const isAdjacentSlice = SpatialNavigation.isAdjacentSlice(
+        refCorners,
+        siblingCorners,
+        isVerticalDirection
+      );
 
-      const primaryAxisFunction = isAdjacentSlice ?
-        SpatialNavigation.getPrimaryAxisDistance :
-        SpatialNavigation.getSecondaryAxisDistance;
+      const primaryAxisFunction = isAdjacentSlice
+        ? SpatialNavigation.getPrimaryAxisDistance
+        : SpatialNavigation.getSecondaryAxisDistance;
 
-      const secondaryAxisFunction = isAdjacentSlice ?
-        SpatialNavigation.getSecondaryAxisDistance :
-        SpatialNavigation.getPrimaryAxisDistance;
+      const secondaryAxisFunction = isAdjacentSlice
+        ? SpatialNavigation.getSecondaryAxisDistance
+        : SpatialNavigation.getPrimaryAxisDistance;
 
-      const primaryAxisDistance = primaryAxisFunction(refCorners, siblingCorners, isVerticalDirection);
-      const secondaryAxisDistance = secondaryAxisFunction(refCorners, siblingCorners, isVerticalDirection);
+      const primaryAxisDistance = primaryAxisFunction(
+        refCorners,
+        siblingCorners,
+        isVerticalDirection
+      );
+      const secondaryAxisDistance = secondaryAxisFunction(
+        refCorners,
+        siblingCorners,
+        isVerticalDirection
+      );
 
       /**
        * The higher this value is, the less prioritised the candidate is
        */
-      const totalDistancePoints = (primaryAxisDistance * MAIN_COORDINATE_WEIGHT) + secondaryAxisDistance;
+      const totalDistancePoints =
+        primaryAxisDistance * MAIN_COORDINATE_WEIGHT + secondaryAxisDistance;
 
       /**
        * + 1 here is in case of distance is zero, but we still want to apply Adjacent priority weight
        */
-      const priority = (totalDistancePoints + 1) / (isAdjacentSlice ? ADJACENT_SLICE_WEIGHT : DIAGONAL_SLICE_WEIGHT);
+      const priority =
+        (totalDistancePoints + 1) /
+        (isAdjacentSlice ? ADJACENT_SLICE_WEIGHT : DIAGONAL_SLICE_WEIGHT);
 
       this.log(
         'smartNavigate',
@@ -263,8 +306,18 @@ class SpatialNavigation {
       );
 
       if (this.visualDebugger) {
-        this.visualDebugger.drawPoint(siblingCorners.a.x, siblingCorners.a.y, 'yellow', 6);
-        this.visualDebugger.drawPoint(siblingCorners.b.x, siblingCorners.b.y, 'yellow', 6);
+        this.visualDebugger.drawPoint(
+          siblingCorners.a.x,
+          siblingCorners.a.y,
+          'yellow',
+          6
+        );
+        this.visualDebugger.drawPoint(
+          siblingCorners.b.x,
+          siblingCorners.b.y,
+          'yellow',
+          6
+        );
       }
 
       return priority;
@@ -381,7 +434,7 @@ class SpatialNavigation {
   }
 
   bindEventHandlers() {
-    if (window) {
+    if (typeof window !== 'undefined') {
       this.keyDownEventListener = (event) => {
         if (this.paused === true) {
           return;
@@ -397,7 +450,9 @@ class SpatialNavigation {
           return;
         }
 
-        this.pressedKeys[eventType] = this.pressedKeys[eventType] ? this.pressedKeys[eventType] + 1 : 1;
+        this.pressedKeys[eventType] = this.pressedKeys[eventType]
+          ? this.pressedKeys[eventType] + 1
+          : 1;
 
         event.preventDefault();
         event.stopPropagation();
@@ -412,7 +467,8 @@ class SpatialNavigation {
           return;
         }
 
-        const preventDefaultNavigation = this.onArrowPress(eventType, details) === false;
+        const preventDefaultNavigation =
+          this.onArrowPress(eventType, details) === false;
 
         if (preventDefaultNavigation) {
           this.log('keyDownEventListener', 'default navigation prevented');
@@ -424,8 +480,11 @@ class SpatialNavigation {
 
       // Apply throttle only if the option we got is > 0 to avoid limiting the listener to every animation frame
       if (this.throttle) {
-        this.keyDownEventListener =
-          lodashThrottle(this.keyDownEventListener.bind(this), this.throttle, THROTTLE_OPTIONS);
+        this.keyDownEventListener = lodashThrottle(
+          this.keyDownEventListener.bind(this),
+          this.throttle,
+          THROTTLE_OPTIONS
+        );
       }
 
       // When throttling then make sure to only throttle key down and cancel any queued functions in case of key up
@@ -445,7 +504,7 @@ class SpatialNavigation {
   }
 
   unbindEventHandlers() {
-    if (window) {
+    if (typeof window !== 'undefined') {
       window.removeEventListener('keydown', this.keyDownEventListener);
       this.keyDownEventListener = null;
 
@@ -489,7 +548,11 @@ class SpatialNavigation {
     /* It's okay to navigate AWAY from an item that has lost its 'focused' status, so we don't inspect
      * component.focusable. */
 
-    return component && component.onArrowPressHandler && component.onArrowPressHandler(...args);
+    return (
+      component &&
+      component.onArrowPressHandler &&
+      component.onArrowPressHandler(...args)
+    );
   }
 
   /**
@@ -506,7 +569,12 @@ class SpatialNavigation {
       return;
     }
 
-    const validDirections = [DIRECTION_DOWN, DIRECTION_UP, DIRECTION_LEFT, DIRECTION_RIGHT];
+    const validDirections = [
+      DIRECTION_DOWN,
+      DIRECTION_UP,
+      DIRECTION_LEFT,
+      DIRECTION_RIGHT
+    ];
 
     if (validDirections.includes(direction)) {
       this.log('navigateByDirection', 'direction', direction);
@@ -523,9 +591,12 @@ class SpatialNavigation {
   onKeyEvent(event) {
     this.visualDebugger && this.visualDebugger.clear();
 
-    const direction = findKey(this.getKeyMap(), (code) => event.keyCode === code);
+    const direction = findKey(
+      this.getKeyMap(),
+      (code) => event.keyCode === code
+    );
 
-    this.smartNavigate(direction, null, {event});
+    this.smartNavigate(direction, null, { event });
   }
 
   /**
@@ -537,19 +608,24 @@ class SpatialNavigation {
     this.log('smartNavigate', 'fromParentFocusKey', fromParentFocusKey);
     this.log('smartNavigate', 'this.focusKey', this.focusKey);
 
-    const currentComponent = this.focusableComponents[fromParentFocusKey || this.focusKey];
+    const currentComponent = this.focusableComponents[
+      fromParentFocusKey || this.focusKey
+    ];
 
     this.log(
-      'smartNavigate', 'currentComponent',
+      'smartNavigate',
+      'currentComponent',
       currentComponent ? currentComponent.focusKey : undefined,
       currentComponent ? currentComponent.node : undefined
     );
 
     if (currentComponent) {
-      const {parentFocusKey, focusKey, layout} = currentComponent;
+      const { parentFocusKey, focusKey, layout } = currentComponent;
 
-      const isVerticalDirection = direction === DIRECTION_DOWN || direction === DIRECTION_UP;
-      const isIncrementalDirection = direction === DIRECTION_DOWN || direction === DIRECTION_RIGHT;
+      const isVerticalDirection =
+        direction === DIRECTION_DOWN || direction === DIRECTION_UP;
+      const isIncrementalDirection =
+        direction === DIRECTION_DOWN || direction === DIRECTION_RIGHT;
 
       const currentCutoffCoordinate = SpatialNavigation.getCutoffCoordinate(
         isVerticalDirection,
@@ -562,7 +638,10 @@ class SpatialNavigation {
        * Get only the siblings with the coords on the way of our moving direction
        */
       const siblings = filter(this.focusableComponents, (component) => {
-        if (component.parentFocusKey === parentFocusKey && component.focusable) {
+        if (
+          component.parentFocusKey === parentFocusKey &&
+          component.focusable
+        ) {
           const siblingCutoffCoordinate = SpatialNavigation.getCutoffCoordinate(
             isVerticalDirection,
             isIncrementalDirection,
@@ -570,25 +649,35 @@ class SpatialNavigation {
             component.layout
           );
 
-          return isIncrementalDirection ?
-            siblingCutoffCoordinate >= currentCutoffCoordinate :
-            siblingCutoffCoordinate <= currentCutoffCoordinate;
+          return isIncrementalDirection
+            ? siblingCutoffCoordinate >= currentCutoffCoordinate
+            : siblingCutoffCoordinate <= currentCutoffCoordinate;
         }
 
         return false;
       });
 
       if (this.debug) {
-        this.log('smartNavigate', 'currentCutoffCoordinate', currentCutoffCoordinate);
         this.log(
-          'smartNavigate', 'siblings', `${siblings.length} elements:`,
+          'smartNavigate',
+          'currentCutoffCoordinate',
+          currentCutoffCoordinate
+        );
+        this.log(
+          'smartNavigate',
+          'siblings',
+          `${siblings.length} elements:`,
           siblings.map((sibling) => sibling.focusKey).join(', '),
           siblings.map((sibling) => sibling.node)
         );
       }
 
       if (this.visualDebugger) {
-        const refCorners = SpatialNavigation.getRefCorners(direction, false, layout);
+        const refCorners = SpatialNavigation.getRefCorners(
+          direction,
+          false,
+          layout
+        );
 
         this.visualDebugger.drawPoint(refCorners.a.x, refCorners.a.y);
         this.visualDebugger.drawPoint(refCorners.b.x, refCorners.b.y);
@@ -604,7 +693,8 @@ class SpatialNavigation {
       const nextComponent = first(sortedSiblings);
 
       this.log(
-        'smartNavigate', 'nextComponent',
+        'smartNavigate',
+        'nextComponent',
         nextComponent ? nextComponent.focusKey : undefined,
         nextComponent ? nextComponent.node : undefined
       );
@@ -623,7 +713,11 @@ class SpatialNavigation {
 
   saveLastFocusedChildKey(component, focusKey) {
     if (component) {
-      this.log('saveLastFocusedChildKey', `${component.focusKey} lastFocusedChildKey set`, focusKey);
+      this.log(
+        'saveLastFocusedChildKey',
+        `${component.focusKey} lastFocusedChildKey set`,
+        focusKey
+      );
       component.lastFocusedChildKey = focusKey;
     }
   }
@@ -632,7 +726,9 @@ class SpatialNavigation {
     if (this.debug) {
       console.log(
         `%c${functionName}%c${debugString}`,
-        `background: ${DEBUG_FN_COLORS[this.logIndex % DEBUG_FN_COLORS.length]}; color: black; padding: 1px 5px;`,
+        `background: ${
+          DEBUG_FN_COLORS[this.logIndex % DEBUG_FN_COLORS.length]
+        }; color: black; padding: 1px 5px;`,
         'background: #333; color: #BADA55; padding: 1px 5px;',
         ...rest
       );
@@ -656,23 +752,37 @@ class SpatialNavigation {
 
     const children = filter(
       this.focusableComponents,
-      (component) => component.parentFocusKey === targetFocusKey && component.focusable
+      (component) =>
+        component.parentFocusKey === targetFocusKey && component.focusable
     );
 
     if (children.length > 0) {
-      const {lastFocusedChildKey, preferredChildFocusKey} = targetComponent;
+      const { lastFocusedChildKey, preferredChildFocusKey } = targetComponent;
 
-      this.log('getNextFocusKey', 'lastFocusedChildKey is', lastFocusedChildKey);
-      this.log('getNextFocusKey', 'preferredChildFocusKey is', preferredChildFocusKey);
+      this.log(
+        'getNextFocusKey',
+        'lastFocusedChildKey is',
+        lastFocusedChildKey
+      );
+      this.log(
+        'getNextFocusKey',
+        'preferredChildFocusKey is',
+        preferredChildFocusKey
+      );
 
       /**
        * First of all trying to focus last focused child
        */
-      if (lastFocusedChildKey &&
+      if (
+        lastFocusedChildKey &&
         !targetComponent.forgetLastFocusedChild &&
         this.isParticipatingFocusableComponent(lastFocusedChildKey)
       ) {
-        this.log('getNextFocusKey', 'lastFocusedChildKey will be focused', lastFocusedChildKey);
+        this.log(
+          'getNextFocusKey',
+          'lastFocusedChildKey will be focused',
+          lastFocusedChildKey
+        );
 
         return this.getNextFocusKey(lastFocusedChildKey);
       }
@@ -680,8 +790,15 @@ class SpatialNavigation {
       /**
        * If there is no lastFocusedChild, trying to focus the preferred focused key
        */
-      if (preferredChildFocusKey && this.isParticipatingFocusableComponent(preferredChildFocusKey)) {
-        this.log('getNextFocusKey', 'preferredChildFocusKey will be focused', preferredChildFocusKey);
+      if (
+        preferredChildFocusKey &&
+        this.isParticipatingFocusableComponent(preferredChildFocusKey)
+      ) {
+        this.log(
+          'getNextFocusKey',
+          'preferredChildFocusKey will be focused',
+          preferredChildFocusKey
+        );
 
         return this.getNextFocusKey(preferredChildFocusKey);
       }
@@ -689,7 +806,7 @@ class SpatialNavigation {
       /**
        * Otherwise, trying to focus something by coordinates
        */
-      const {focusKey: childKey} = getChildClosestToOrigin(children);
+      const { focusKey: childKey } = getChildClosestToOrigin(children);
 
       this.log('getNextFocusKey', 'childKey will be focused', childKey);
 
@@ -766,11 +883,11 @@ class SpatialNavigation {
     }
   }
 
-  removeFocusable({focusKey}) {
+  removeFocusable({ focusKey }) {
     const componentToRemove = this.focusableComponents[focusKey];
 
     if (componentToRemove) {
-      const {parentFocusKey} = componentToRemove;
+      const { parentFocusKey } = componentToRemove;
 
       Reflect.deleteProperty(this.focusableComponents, focusKey);
 
@@ -780,7 +897,8 @@ class SpatialNavigation {
       /**
        * If the component was stored as lastFocusedChild, clear lastFocusedChildKey from parent
        */
-      parentComponent && parentComponent.lastFocusedChildKey === focusKey &&
+      parentComponent &&
+        parentComponent.lastFocusedChildKey === focusKey &&
         (parentComponent.lastFocusedChildKey = null);
 
       if (this.nativeMode) {
@@ -807,14 +925,22 @@ class SpatialNavigation {
   }
 
   setCurrentFocusedKey(newFocusKey, details) {
-    if (this.isFocusableComponent(this.focusKey) && newFocusKey !== this.focusKey) {
+    if (
+      this.isFocusableComponent(this.focusKey) &&
+      newFocusKey !== this.focusKey
+    ) {
       const oldComponent = this.focusableComponents[this.focusKey];
-      const parentComponent = this.focusableComponents[oldComponent.parentFocusKey];
+      const parentComponent = this.focusableComponents[
+        oldComponent.parentFocusKey
+      ];
 
       this.saveLastFocusedChildKey(parentComponent, this.focusKey);
 
       oldComponent.onUpdateFocus(false);
-      oldComponent.onBecameBlurredHandler(this.getNodeLayoutByFocusKey(this.focusKey), details);
+      oldComponent.onBecameBlurredHandler(
+        this.getNodeLayoutByFocusKey(this.focusKey),
+        details
+      );
     }
 
     this.focusKey = newFocusKey;
@@ -823,7 +949,10 @@ class SpatialNavigation {
       const newComponent = this.focusableComponents[this.focusKey];
 
       newComponent.onUpdateFocus(true);
-      newComponent.onBecameFocusedHandler(this.getNodeLayoutByFocusKey(this.focusKey), details);
+      newComponent.onBecameFocusedHandler(
+        this.getNodeLayoutByFocusKey(this.focusKey),
+        details
+      );
     }
   }
 
@@ -836,12 +965,12 @@ class SpatialNavigation {
      * Recursively iterate the tree up and find all the parents' focus keys
      */
     while (currentComponent) {
-      const {parentFocusKey} = currentComponent;
+      const { parentFocusKey } = currentComponent;
 
       const parentComponent = this.focusableComponents[parentFocusKey];
 
       if (parentComponent) {
-        const {focusKey: currentParentFocusKey} = parentComponent;
+        const { focusKey: currentParentFocusKey } = parentComponent;
 
         parents.push(currentParentFocusKey);
       }
@@ -849,20 +978,30 @@ class SpatialNavigation {
       currentComponent = parentComponent;
     }
 
-    const parentsToRemoveFlag = difference(this.parentsHavingFocusedChild, parents);
-    const parentsToAddFlag = difference(parents, this.parentsHavingFocusedChild);
+    const parentsToRemoveFlag = difference(
+      this.parentsHavingFocusedChild,
+      parents
+    );
+    const parentsToAddFlag = difference(
+      parents,
+      this.parentsHavingFocusedChild
+    );
 
     forEach(parentsToRemoveFlag, (parentFocusKey) => {
       const parentComponent = this.focusableComponents[parentFocusKey];
 
-      parentComponent && parentComponent.trackChildren && parentComponent.onUpdateHasFocusedChild(false);
+      parentComponent &&
+        parentComponent.trackChildren &&
+        parentComponent.onUpdateHasFocusedChild(false);
       this.onIntermediateNodeBecameBlurred(parentFocusKey, details);
     });
 
     forEach(parentsToAddFlag, (parentFocusKey) => {
       const parentComponent = this.focusableComponents[parentFocusKey];
 
-      parentComponent && parentComponent.trackChildren && parentComponent.onUpdateHasFocusedChild(true);
+      parentComponent &&
+        parentComponent.trackChildren &&
+        parentComponent.onUpdateHasFocusedChild(true);
       this.onIntermediateNodeBecameFocused(parentFocusKey, details);
     });
 
@@ -876,12 +1015,15 @@ class SpatialNavigation {
      * Recursively iterate the tree up and update all the parent's lastFocusedChild
      */
     while (currentComponent) {
-      const {parentFocusKey} = currentComponent;
+      const { parentFocusKey } = currentComponent;
 
       const parentComponent = this.focusableComponents[parentFocusKey];
 
       if (parentComponent) {
-        this.saveLastFocusedChildKey(parentComponent, currentComponent.focusKey);
+        this.saveLastFocusedChildKey(
+          parentComponent,
+          currentComponent.focusKey
+        );
       }
 
       currentComponent = parentComponent;
@@ -908,17 +1050,26 @@ class SpatialNavigation {
    * 'focusable' focusableComponent). Seems less confusing than calling it isFocusableFocusableComponent()
    */
   isParticipatingFocusableComponent(focusKey) {
-    return this.isFocusableComponent(focusKey) && this.focusableComponents[focusKey].focusable;
+    return (
+      this.isFocusableComponent(focusKey) &&
+      this.focusableComponents[focusKey].focusable
+    );
   }
 
   onIntermediateNodeBecameFocused(focusKey, details) {
     this.isParticipatingFocusableComponent(focusKey) &&
-      this.focusableComponents[focusKey].onBecameFocusedHandler(this.getNodeLayoutByFocusKey(focusKey), details);
+      this.focusableComponents[focusKey].onBecameFocusedHandler(
+        this.getNodeLayoutByFocusKey(focusKey),
+        details
+      );
   }
 
   onIntermediateNodeBecameBlurred(focusKey, details) {
     this.isParticipatingFocusableComponent(focusKey) &&
-      this.focusableComponents[focusKey].onBecameBlurredHandler(this.getNodeLayoutByFocusKey(focusKey), details);
+      this.focusableComponents[focusKey].onBecameBlurredHandler(
+        this.getNodeLayoutByFocusKey(focusKey),
+        details
+      );
   }
 
   pause() {
@@ -969,7 +1120,7 @@ class SpatialNavigation {
       return;
     }
 
-    const {node} = component;
+    const { node } = component;
 
     measureLayout(node, (x, y, width, height, left, top) => {
       component.layout = {
@@ -984,7 +1135,7 @@ class SpatialNavigation {
     });
   }
 
-  updateFocusable(focusKey, {node, preferredChildFocusKey, focusable}) {
+  updateFocusable(focusKey, { node, preferredChildFocusKey, focusable }) {
     if (this.nativeMode) {
       return;
     }
